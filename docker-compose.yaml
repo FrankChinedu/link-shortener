@@ -5,11 +5,13 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
     ports:
-      - '5432:5432'
+      - '5431:5432'
     volumes:
       - db:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/create_tables.sql
+    command: postgres -c max_connections=200
 volumes:
   db:
     driver: local
