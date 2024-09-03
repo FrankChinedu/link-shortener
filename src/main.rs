@@ -1,6 +1,8 @@
 use std::error::Error;
 
+use auth::auth;
 use axum::{
+    middleware,
     routing::{get, patch, post},
     Router,
 };
@@ -10,6 +12,8 @@ use routes::{create_link, get_link_statistics, health, redirect, update_link};
 use sqlx::postgres::PgPoolOptions;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+mod auth;
 mod routes;
 mod utils;
 
@@ -36,7 +40,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let app = Router::new()
         .route("/create", post(create_link))
         .route("/:id/statistics", get(get_link_statistics))
-        .route("/:id", patch(update_link).get(redirect))
+        .route_layer(middleware::from_fn_with_state(db.clone(), auth))
+        .route(
+            "/:id",
+            patch(update_link)
+                .route_layer(middleware::from_fn_with_state(db.clone(), auth))
+                .get(redirect),
+        )
         .route("/metrics", get(|| async move { metric_handle.render() }))
         .route("/health", get(health))
         .layer(TraceLayer::new_for_http())
